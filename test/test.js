@@ -7,28 +7,18 @@ const pixelmatch = require('pixelmatch');
 
 const { TEST_DIR, TEST_ROUTE, ORIGINAL_DIR, TEST_DIFFERENT_ROUTE } = CONSTANTS;
 
-//mocha -g 'take'
-//mocha -g 'compare'
-// - page is a reference to the Puppeteer page.
-// - route is the path you're loading, which I'm using to name the file.
-// - filePrefix is either "wide" or "narrow", since I'm automatically testing both.
+// mocha -g 'take'
+// mocha -g 'compare'
+
 async function takeAndCompareScreenshot(page, route, filePrefix) {
-    // If you didn't specify a file, use the name of the route.
     let fileName = filePrefix + '/' + (route ? route : 'index');
-  
-    // Start the browser, go to that page, and take a screenshot.
     await page.goto(TEST_ROUTE);
     await page.screenshot({path: `${TEST_DIR}/${fileName}.png`});
-  
-    // Test to see if it's right.
     return compareScreenshots(fileName);
 }
 
 async function takeOriginalScreenshot(page, route, filePrefix) {
-  // If you didn't specify a file, use the name of the route.
   let fileName = filePrefix + '/' + (route ? route : 'index');
-
-  // Start the browser, go to that page, and take a screenshot.
   await page.goto(TEST_DIFFERENT_ROUTE);
   await page.screenshot({path: `${ORIGINAL_DIR}/${fileName}.png`});
 }
@@ -65,16 +55,9 @@ function compareScreenshots(fileName) {
 describe('compare new screenshots', function() {
   let browser, page;
 
-  // This is ran when the suite starts up.
   before(async function() {
-    // This is where you would substitute your python or Express server or whatever.
-    // polyserve = await startServer({port:4000});
-
-    // Create the test directory if needed. This and the ORIGINAL_DIR
-    // variables are global somewhere.
     if (!fs.existsSync(TEST_DIR)) fs.mkdirSync(TEST_DIR);
 
-    // And its wide screen/small screen subdirectories.
     if (!fs.existsSync(`${TEST_DIR}/wide`)) fs.mkdirSync(`${TEST_DIR}/wide`);
     if (!fs.existsSync(`${TEST_DIR}/narrow`)) fs.mkdirSync(`${TEST_DIR}/narrow`);
   });
@@ -86,7 +69,6 @@ describe('compare new screenshots', function() {
 
   afterEach(() => browser.close());
 
-  // Wide screen tests!
   describe('wide screen', function() {
     beforeEach(async function() {
       return page.setViewport({width: 800, height: 600});
@@ -94,10 +76,8 @@ describe('compare new screenshots', function() {
     it('/view1', function(done) {
       takeAndCompareScreenshot(page, 'view1', 'wide').then(done);
     }).timeout(5000);
-    // And your other routes, 404, etc.
   });
 
-  // Narrow screen tests are the same, but with a different viewport.
   describe('narrow screen', function() {
     beforeEach(async function() {
       return page.setViewport({width: 375, height: 667});
@@ -105,23 +85,14 @@ describe('compare new screenshots', function() {
     it('/view1', function(done) {
       takeAndCompareScreenshot(page, 'view1', 'narrow').then(done);
     }).timeout(5000);
-    // And your other routes, 404, etc.
   });
 });
 
 describe('take original screenshots', function() {
   let browser, page;
 
-  // This is ran when the suite starts up.
   before(async function() {
-    // This is where you would substitute your python or Express server or whatever.
-    // polyserve = await startServer({port:4000});
-
-    // Create the test directory if needed. This and the ORIGINAL_DIR
-    // variables are global somewhere.
     if (!fs.existsSync(ORIGINAL_DIR)) fs.mkdirSync(ORIGINAL_DIR);
-
-    // And its wide screen/small screen subdirectories.
     if (!fs.existsSync(`${ORIGINAL_DIR}/wide`)) fs.mkdirSync(`${ORIGINAL_DIR}/wide`);
     if (!fs.existsSync(`${ORIGINAL_DIR}/narrow`)) fs.mkdirSync(`${ORIGINAL_DIR}/narrow`);
   });
@@ -133,7 +104,6 @@ describe('take original screenshots', function() {
 
   afterEach(() => browser.close());
 
-  // Wide screen tests!
   describe('wide screen', function() {
     beforeEach(async function() {
       return page.setViewport({width: 800, height: 600});
@@ -141,10 +111,8 @@ describe('take original screenshots', function() {
     it('/view1', async function() {
       return takeOriginalScreenshot(page, 'view1', 'wide');
     });
-    // And your other routes, 404, etc.
   });
 
-  // Narrow screen tests are the same, but with a different viewport.
   describe('narrow screen', function() {
     beforeEach(async function() {
       return page.setViewport({width: 375, height: 667});
@@ -152,6 +120,5 @@ describe('take original screenshots', function() {
     it('/view1', async function() {
       return takeOriginalScreenshot(page, 'view1', 'narrow');
     });
-    // And your other routes, 404, etc.
   });
 });
