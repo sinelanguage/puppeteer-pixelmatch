@@ -10,16 +10,34 @@ const { TEST_DIR, TEST_ROUTE, ORIGINAL_DIR, TEST_DIFFERENT_ROUTE } = CONSTANTS;
 // mocha -g 'take'
 // mocha -g 'compare'
 
-async function takeAndCompareScreenshot(page, route, filePrefix) {
-    let fileName = filePrefix + '/' + (route ? route : 'index');
-    await page.goto(TEST_ROUTE);
+const URLS = [
+  'https://wietse.loves.engineering/testing-promises-with-mocha-90df8b7d2e35',
+  'http://www.adamwinick.com',
+  'https://www.autoblog.com/',
+  'https://news.ycombinator.com/',
+  'http://www.synthtopia.com/',
+  'https://www.matrixsynth.com/',
+]
+
+const OTHER_URLS = [
+  'https://www.matrixsynth.com/',
+  'https://wietse.loves.engineering/testing-promises-with-mocha-90df8b7d2e35',
+  'http://www.adamwinick.com',
+  'https://www.autoblog.com/',
+  'https://news.ycombinator.com/',
+  'http://www.synthtopia.com/',
+]
+
+async function takeAndCompareScreenshot(page, route, index, filePrefix) {
+    let fileName = filePrefix + '/' + (index ? index : 'index');
+    await page.goto(route);
     await page.screenshot({path: `${TEST_DIR}/${fileName}.png`});
     return compareScreenshots(fileName);
 }
 
-async function takeOriginalScreenshot(page, route, filePrefix) {
-  let fileName = filePrefix + '/' + (route ? route : 'index');
-  await page.goto(TEST_DIFFERENT_ROUTE);
+async function takeOriginalScreenshot(page, route, index, filePrefix) {
+  let fileName = filePrefix + '/' + (index ? index : 'index');
+  await page.goto(route);
   await page.screenshot({path: `${ORIGINAL_DIR}/${fileName}.png`});
 }
 
@@ -55,6 +73,7 @@ function compareScreenshots(fileName) {
 describe('compare new screenshots', function() {
   let browser, page;
 
+  // This is ran when the suite starts up.
   before(async function() {
     if (!fs.existsSync(TEST_DIR)) fs.mkdirSync(TEST_DIR);
 
@@ -69,22 +88,26 @@ describe('compare new screenshots', function() {
 
   afterEach(() => browser.close());
 
-  describe('wide screen', function() {
-    beforeEach(async function() {
+  describe('wide screen', async function() {
+    beforeEach(function() {
       return page.setViewport({width: 800, height: 600});
     });
-    it('/view1', function(done) {
-      takeAndCompareScreenshot(page, 'view1', 'wide').then(done);
-    }).timeout(5000);
+    await Promise.all(
+      OTHER_URLS.map((url, i) => it(url, async function() {
+        await takeAndCompareScreenshot(page, url, i, 'wide');
+      }).timeout(0))
+    )
   });
 
-  describe('narrow screen', function() {
-    beforeEach(async function() {
+  describe('narrow screen', async function() {
+    beforeEach(function() {
       return page.setViewport({width: 375, height: 667});
     });
-    it('/view1', function(done) {
-      takeAndCompareScreenshot(page, 'view1', 'narrow').then(done);
-    }).timeout(5000);
+   await Promise.all(
+    OTHER_URLS.map((url, i) => it(url, async function(done) {
+      await takeAndCompareScreenshot(page, url, i, 'narrow').then(done);
+    }).timeout(0))
+   )
   });
 });
 
@@ -105,20 +128,24 @@ describe('take original screenshots', function() {
   afterEach(() => browser.close());
 
   describe('wide screen', function() {
-    beforeEach(async function() {
+    beforeEach(function() {
       return page.setViewport({width: 800, height: 600});
     });
-    it('/view1', async function() {
-      return takeOriginalScreenshot(page, 'view1', 'wide');
-    });
+    URLS.map(
+      (url, i) => it(url, async function() {
+        return takeOriginalScreenshot(page, url, i, 'wide');
+      }).timeout(0)
+    )
   });
 
   describe('narrow screen', function() {
-    beforeEach(async function() {
+    beforeEach(function() {
       return page.setViewport({width: 375, height: 667});
     });
-    it('/view1', async function() {
-      return takeOriginalScreenshot(page, 'view1', 'narrow');
-    });
+    URLS.map(
+      (url, i) => it(url, async function() {
+        return takeOriginalScreenshot(page, url, i, 'narrow');
+      }).timeout(0)
+    )
   });
 });
