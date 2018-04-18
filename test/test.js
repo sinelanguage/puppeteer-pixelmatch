@@ -6,6 +6,8 @@ const PNG = require('pngjs').PNG;
 const pixelmatch = require('pixelmatch');
 
 const { TEST_DIR, TEST_ROUTE, ORIGINAL_DIR, TEST_DIFFERENT_ROUTE } = CONSTANTS;
+const NissanUrls = require('../config/nissan.json');
+
 
 // mocha -g 'take'
 // mocha -g 'compare'
@@ -28,17 +30,28 @@ const OTHER_URLS = [
   'http://www.synthtopia.com/',
 ]
 
+ // Get the "viewport" of the page, as reported by the page.
+ const dimensions = async(page) => await page.evaluate(() => {
+  return {
+    width: document.documentElement.clientWidth,
+    height: document.documentElement.clientHeight,
+    deviceScaleFactor: window.devicePixelRatio
+  };
+});
+
 async function takeAndCompareScreenshot(page, route, index, filePrefix) {
-    let fileName = filePrefix + '/' + (index ? index : 'index');
+    let fileName = filePrefix + '/' + (index ? (index.charAt(0 === "/") && index.replace(/\//g, "-").substr(1)) : 'index');;
+    let img2Width = 0;
+    let img2Height = 0;
     await page.goto(route);
-    await page.screenshot({path: `${TEST_DIR}/${fileName}.png`});
+    await page.screenshot({path: `${TEST_DIR}/${fileName}.png`, fullPage: true});
     return compareScreenshots(fileName);
 }
 
 async function takeOriginalScreenshot(page, route, index, filePrefix) {
-  let fileName = filePrefix + '/' + (index ? index : 'index');
+  let fileName = filePrefix + '/' + (index ? (index.charAt(0 === "/") && index.replace(/\//g, "-").substr(1)) : 'index');
   await page.goto(route);
-  await page.screenshot({path: `${ORIGINAL_DIR}/${fileName}.png`});
+  await page.screenshot({path: `${ORIGINAL_DIR}/${fileName}.png`, fullPage: true});
 }
 
 function compareScreenshots(fileName) {
@@ -78,7 +91,7 @@ describe('compare new screenshots', function() {
     if (!fs.existsSync(TEST_DIR)) fs.mkdirSync(TEST_DIR);
 
     if (!fs.existsSync(`${TEST_DIR}/wide`)) fs.mkdirSync(`${TEST_DIR}/wide`);
-    if (!fs.existsSync(`${TEST_DIR}/narrow`)) fs.mkdirSync(`${TEST_DIR}/narrow`);
+    // if (!fs.existsSync(`${TEST_DIR}/narrow`)) fs.mkdirSync(`${TEST_DIR}/narrow`);
   });
 
   beforeEach(async function() {
@@ -93,22 +106,22 @@ describe('compare new screenshots', function() {
       return page.setViewport({width: 800, height: 600});
     });
     await Promise.all(
-      OTHER_URLS.map((url, i) => it(url, async function() {
-        await takeAndCompareScreenshot(page, url, i, 'wide');
+      NissanUrls.pages.map((pageObj, i) => it(pageObj.url, async function() {
+        await takeAndCompareScreenshot(page, `http://www.nissan.ca${pageObj.url}`, i, 'wide');
       }).timeout(0))
     )
   });
 
-  describe('narrow screen', async function() {
-    beforeEach(function() {
-      return page.setViewport({width: 375, height: 667});
-    });
-   await Promise.all(
-    OTHER_URLS.map((url, i) => it(url, async function(done) {
-      await takeAndCompareScreenshot(page, url, i, 'narrow').then(done);
-    }).timeout(0))
-   )
-  });
+  // describe('narrow screen', async function() {
+  //   beforeEach(function() {
+  //     return page.setViewport({width: 375, height: 667});
+  //   });
+  //  await Promise.all(
+  //   OTHER_URLS.map((url, i) => it(url, async function(done) {
+  //     await takeAndCompareScreenshot(page, url, i, 'narrow').then(done);
+  //   }).timeout(0))
+  //  )
+  // });
 });
 
 describe('take original screenshots', function() {
@@ -117,7 +130,10 @@ describe('take original screenshots', function() {
   before(async function() {
     if (!fs.existsSync(ORIGINAL_DIR)) fs.mkdirSync(ORIGINAL_DIR);
     if (!fs.existsSync(`${ORIGINAL_DIR}/wide`)) fs.mkdirSync(`${ORIGINAL_DIR}/wide`);
-    if (!fs.existsSync(`${ORIGINAL_DIR}/narrow`)) fs.mkdirSync(`${ORIGINAL_DIR}/narrow`);
+    // if (!fs.existsSync(`${ORIGINAL_DIR}/narrow`)) fs.mkdirSync(`${ORIGINAL_DIR}/narrow`);
+    NissanUrls.pages.map(
+      page => console.log(`http://www.nissan.ca${page.url}`)
+    )
   });
 
   beforeEach(async function() {
@@ -131,21 +147,21 @@ describe('take original screenshots', function() {
     beforeEach(function() {
       return page.setViewport({width: 800, height: 600});
     });
-    URLS.map(
-      (url, i) => it(url, async function() {
-        return takeOriginalScreenshot(page, url, i, 'wide');
+    NissanUrls.pages.map(
+      (pageObj, i) => it(pageObj.url, async function() {
+        return takeOriginalScreenshot(page, `http://www.nissan.ca${pageObj.url}`, pageObj.url, 'wide');
       }).timeout(0)
     )
   });
 
-  describe('narrow screen', function() {
-    beforeEach(function() {
-      return page.setViewport({width: 375, height: 667});
-    });
-    URLS.map(
-      (url, i) => it(url, async function() {
-        return takeOriginalScreenshot(page, url, i, 'narrow');
-      }).timeout(0)
-    )
-  });
+  // describe('narrow screen', function() {
+  //   beforeEach(function() {
+  //     return page.setViewport({width: 375, height: 667});
+  //   });
+  //   URLS.map(
+  //     (url, i) => it(url, async function() {
+  //       return takeOriginalScreenshot(page, url, i, 'narrow');
+  //     }).timeout(0)
+  //   )
+  // });
 });
