@@ -160,8 +160,7 @@ describe("compare new screenshots", function() {
     it("/view1", async function(done) {
       const fileName = await takeScreenshotToCompare(page, "view1", "wide");
       await compareScreenshots(fileName);
-      //done();
-    }); // .timeout(5000);
+    });
     // And your other routes, 404, etc.
   });
 
@@ -173,8 +172,7 @@ describe("compare new screenshots", function() {
     it("/view1", async function(done) {
       const fileName = await takeScreenshotToCompare(page, "view1", "narrow");
       await compareScreenshots(fileName);
-      // done();
-    }); // .timeout(5000);
+    });
     // And your other routes, 404, etc.
   });
 });
