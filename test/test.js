@@ -7,12 +7,12 @@ const pixelmatch = require("pixelmatch");
 
 const { TEST_DIR, TEST_ROUTE, ORIGINAL_DIR, TEST_DIFFERENT_ROUTE } = CONSTANTS;
 
-//mocha -g 'take'
-//mocha -g 'compare'
+// mocha -g 'take'
+// mocha -g 'compare'
 // - page is a reference to the Puppeteer page.
 // - route is the path you're loading, which I'm using to name the file.
 // - filePrefix is either "wide" or "narrow", since I'm automatically testing both.
-async function takeAndCompareScreenshot(page, route, filePrefix) {
+async function takeScreenshotToCompare(page, route, filePrefix) {
   // If you didn't specify a file, use the name of the route.
   let fileName = filePrefix + "/" + (route ? route : "index");
 
@@ -21,7 +21,7 @@ async function takeAndCompareScreenshot(page, route, filePrefix) {
   await page.screenshot({ path: `${TEST_DIR}/${fileName}.png` });
 
   // Test to see if it's right.
-  return compareScreenshots(fileName);
+  return new Promise(res => res(fileName));
 }
 
 async function takeOriginalScreenshot(page, route, filePrefix) {
@@ -31,6 +31,8 @@ async function takeOriginalScreenshot(page, route, filePrefix) {
   // Start the browser, go to that page, and take a screenshot.
   await page.goto(TEST_DIFFERENT_ROUTE);
   await page.screenshot({ path: `${ORIGINAL_DIR}/${fileName}.png` });
+
+  return new Promise(res => res());
 }
 
 function compareScreenshots(fileName) {
@@ -68,8 +70,8 @@ function compareScreenshots(fileName) {
 
       // The files should look the same.
       expect(numDiffPixels, "number of different pixels").equal(0);
-      resolve();
     }
+    resolve();
   });
 }
 
@@ -83,13 +85,13 @@ describe("take original screenshots", function() {
 
     // Create the test directory if needed. This and the ORIGINAL_DIR
     // variables are global somewhere.
-    if (!fs.existsSync(ORIGINAL_DIR)) fs.mkdirSync(ORIGINAL_DIR);
+    if (!fs.existsSync(ORIGINAL_DIR)) await fs.mkdirSync(ORIGINAL_DIR);
 
     // And its wide screen/small screen subdirectories.
     if (!fs.existsSync(`${ORIGINAL_DIR}/wide`))
-      fs.mkdirSync(`${ORIGINAL_DIR}/wide`);
+      await fs.mkdirSync(`${ORIGINAL_DIR}/wide`);
     if (!fs.existsSync(`${ORIGINAL_DIR}/narrow`))
-      fs.mkdirSync(`${ORIGINAL_DIR}/narrow`);
+      await fs.mkdirSync(`${ORIGINAL_DIR}/narrow`);
   });
 
   beforeEach(async function() {
@@ -102,10 +104,10 @@ describe("take original screenshots", function() {
   // Wide screen tests!
   describe("wide screen", function() {
     beforeEach(async function() {
-      return page.setViewport({ width: 800, height: 600 });
+      await page.setViewport({ width: 800, height: 600 });
     });
     it("/view1", async function() {
-      return takeOriginalScreenshot(page, "view1", "wide");
+      await takeOriginalScreenshot(page, "view1", "wide");
     });
     // And your other routes, 404, etc.
   });
@@ -113,10 +115,10 @@ describe("take original screenshots", function() {
   // Narrow screen tests are the same, but with a different viewport.
   describe("narrow screen", function() {
     beforeEach(async function() {
-      return page.setViewport({ width: 375, height: 667 });
+      await page.setViewport({ width: 375, height: 667 });
     });
     it("/view1", async function() {
-      return takeOriginalScreenshot(page, "view1", "narrow");
+      await takeOriginalScreenshot(page, "view1", "narrow");
     });
     // And your other routes, 404, etc.
   });
@@ -125,19 +127,20 @@ describe("take original screenshots", function() {
 describe("compare new screenshots", function() {
   let browser, page;
 
-  // This is ran when the suite starts up.
+  // This is run when the suite starts up.
   before(async function() {
     // This is where you would substitute your python or Express server or whatever.
     // polyserve = await startServer({port:4000});
 
     // Create the test directory if needed. This and the ORIGINAL_DIR
     // variables are global somewhere.
-    if (!fs.existsSync(TEST_DIR)) fs.mkdirSync(TEST_DIR);
+    if (!fs.existsSync(TEST_DIR)) await fs.mkdirSync(TEST_DIR);
 
     // And its wide screen/small screen subdirectories.
-    if (!fs.existsSync(`${TEST_DIR}/wide`)) fs.mkdirSync(`${TEST_DIR}/wide`);
+    if (!fs.existsSync(`${TEST_DIR}/wide`))
+      await fs.mkdirSync(`${TEST_DIR}/wide`);
     if (!fs.existsSync(`${TEST_DIR}/narrow`))
-      fs.mkdirSync(`${TEST_DIR}/narrow`);
+      await fs.mkdirSync(`${TEST_DIR}/narrow`);
   });
 
   beforeEach(async function() {
@@ -145,27 +148,33 @@ describe("compare new screenshots", function() {
     page = await browser.newPage();
   });
 
-  afterEach(() => browser.close());
+  afterEach(async () => {
+    await browser.close();
+  });
 
   // Wide screen tests!
   describe("wide screen", function() {
     beforeEach(async function() {
-      return page.setViewport({ width: 800, height: 600 });
+      await page.setViewport({ width: 800, height: 600 });
     });
-    it("/view1", function(done) {
-      takeAndCompareScreenshot(page, "view1", "wide").then(done);
-    }).timeout(5000);
+    it("/view1", async function(done) {
+      const fileName = await takeScreenshotToCompare(page, "view1", "wide");
+      await compareScreenshots(fileName);
+      //done();
+    }); // .timeout(5000);
     // And your other routes, 404, etc.
   });
 
   // Narrow screen tests are the same, but with a different viewport.
   describe("narrow screen", function() {
     beforeEach(async function() {
-      return page.setViewport({ width: 375, height: 667 });
+      await page.setViewport({ width: 375, height: 667 });
     });
-    it("/view1", function(done) {
-      takeAndCompareScreenshot(page, "view1", "narrow").then(done);
-    }).timeout(5000);
+    it("/view1", async function(done) {
+      const fileName = await takeScreenshotToCompare(page, "view1", "narrow");
+      await compareScreenshots(fileName);
+      // done();
+    }); // .timeout(5000);
     // And your other routes, 404, etc.
   });
 });
