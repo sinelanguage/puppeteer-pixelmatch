@@ -1,3 +1,4 @@
+
 const puppeteer = require("puppeteer");
 const expect = require("chai").expect;
 const fs = require("fs");
@@ -17,7 +18,6 @@ const {
 
 // mocha -g 'take'
 // mocha -g 'compare'
-
 // read a txt file line by line;
 const readFileLineByLine = async txtFile => {
   const _URLS = fs
@@ -38,13 +38,13 @@ async function takeOriginalScreenshot(page, route, filePrefix) {
   await page.screenshot({
     path: `${ORIGINAL_DIR}/${filePrefix}/${fileName}.png`,
     fullPage: true,
+
   });
   return;
 }
 
 const makeDirectories = async directoryName => {
   if (!fs.existsSync(directoryName)) fs.mkdirSync(directoryName);
-
   // And its wide screen/small screen subdirectories.
   if (!fs.existsSync(`${directoryName}/wide`))
     fs.mkdirSync(`${directoryName}/wide`);
