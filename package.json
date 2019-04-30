@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha",
-    "delete_originals": "find . -name screenshot-originals -type d -print0|xargs -0 rm -r --",
-    "delete_current": "find . -name screenshot-current -type d -print0|xargs -0 rm -r --",
+    "delete_originals": "rm -rf screenshots-originals",
+    "delete_current": "rm -rf screenshots-current",
     "clear_screenshots": "npm run delete_originals && npm run delete_current",
     "original": "npm run delete_originals && mocha -g 'original'",
     "compare": "npm run delete_current && mocha -g 'compare'"
