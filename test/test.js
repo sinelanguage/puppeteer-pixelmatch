@@ -1,4 +1,3 @@
-
 const puppeteer = require("puppeteer");
 const expect = require("chai").expect;
 const fs = require("fs");
@@ -42,33 +41,41 @@ async function takeScreenshot(page, route, filePrefix, dir, original) {
   await page.screenshot({
     path: `${dir}/${filePrefix}/${fileName}.png`,
     fullPage: true,
-
   });
-  if (!original) return fileName;
+  if (!original) {
+    console.log(
+      `Comparison screenshot saved to: ${dir}/${filePrefix}/${fileName}.png`,
+    );
+    return fileName;
+  }
+  console.log(
+    `Initial screenshot to compare saved to: ${dir}/${filePrefix}/${fileName}.png`,
+  );
   return;
 }
 
-const makeDirectories = async directoryName => {
+const makeDirectories = async (directoryName, viewPortDir, original) => {
   if (!fs.existsSync(directoryName)) fs.mkdirSync(directoryName);
   // And its wide screen/small screen subdirectories.
-  if (!fs.existsSync(`${directoryName}/wide`))
-    fs.mkdirSync(`${directoryName}/wide`);
-  if (!fs.existsSync(`${directoryName}/narrow`))
-    fs.mkdirSync(`${directoryName}/narrow`);
+  if (!fs.existsSync(`${directoryName}/${viewPortDir}`))
+    fs.mkdirSync(`${directoryName}/${viewPortDir}`);
+  if (!original && !fs.existsSync(`${directoryName}/${viewPortDir}/diff`))
+    fs.mkdirSync(`${directoryName}/${viewPortDir}/diff`);
 };
 
-const compareScreenshots = async fileName => {
+const compareScreenshots = async (fileName, viewPortDir) => {
   return new Promise((resolve, reject) => {
     const img1 = fs
-      .createReadStream(`${TEST_DIR}/wide/${fileName}.png`)
+      .createReadStream(`${TEST_DIR}/${viewPortDir}/${fileName}.png`)
       .pipe(new PNG())
       .on("parsed", doneReading);
     const img2 = fs
-      .createReadStream(`${ORIGINAL_DIR}/wide/${fileName}.png`)
+      .createReadStream(`${ORIGINAL_DIR}/${viewPortDir}/${fileName}.png`)
       .pipe(new PNG())
       .on("parsed", doneReading);
 
     let filesRead = 0;
+
     function doneReading() {
       // Wait until both files are read.
       if (++filesRead < 2) return;
@@ -79,7 +86,13 @@ const compareScreenshots = async fileName => {
 
       // Do the visual diff.
       const diff = new PNG({ width: img1.width, height: img2.height });
-      diff.pack().pipe(fs.createWriteStream(`${TEST_DIR}/${fileName}diff.png`));
+      diff
+        .pack()
+        .pipe(
+          fs.createWriteStream(
+            `${TEST_DIR}/${viewPortDir}/diff/${fileName}-diff.png`,
+          ),
+        );
 
       const numDiffPixels = pixelmatch(
         img1.data,
@@ -92,16 +105,19 @@ const compareScreenshots = async fileName => {
 
       // The files should look the same.
       expect(numDiffPixels, "number of different pixels").equal(0);
+      console.log("Number of different pixels: ", numDiffPixels);
     }
-    resolve();
+    resolve(() => {
+      console.log("Done comparing screenshots");
+    });
   });
 };
 
 const getUrls = async () => await readFileLineByLine(TXT_FILE);
 
 describe("take original screenshots", function() {
-  it("screenshots done", async function() {
-    await makeDirectories(ORIGINAL_DIR);
+  it("Headless chrome is launching and taking origin screenshots", async function() {
+    await makeDirectories(ORIGINAL_DIR, "wide", true);
     const URLS = await getUrls();
     // launch headless chrome
     const browser = await puppeteer.launch();
@@ -116,13 +132,14 @@ describe("take original screenshots", function() {
       }),
     ).then(async () => {
       await browser.close().then(logBrowserIsClosed);
+      expect(true).to.be.true;
     });
-  }).timeout(0);
+  });
 });
 
 describe("take and compare screenshots", function() {
   it("screenshots done", async function() {
-    await makeDirectories(TEST_DIR);
+    await makeDirectories(TEST_DIR, "wide");
     const URLS = await getUrls();
 
     // launch headless chrome
@@ -135,7 +152,7 @@ describe("take and compare screenshots", function() {
         // set viewPort size and take screenshot
         await page.setViewport({ width: 1920, height: 1024 });
         const fileName = await takeScreenshot(page, url, "wide", TEST_DIR);
-        await compareScreenshots(fileName);
+        await compareScreenshots(fileName, "wide");
       }),
     ).then(async () => {
       await browser.close().then(logBrowserIsClosed);
