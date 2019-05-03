@@ -1,11 +1,37 @@
 const puppeteer = require("puppeteer");
+const devices = require("puppeteer/DeviceDescriptors");
 const expect = require("chai").expect;
 const fs = require("fs");
-const CONSTANTS = require("../src/constants");
+const CONSTANTS = require("../constants/");
 const PNG = require("pngjs").PNG;
 const pixelmatch = require("pixelmatch");
+const xmlReader = require("read-xml");
+const xml2js = require("xml2js");
+const parser = new xml2js.Parser({ attrkey: "urlset" });
+const fetch = require("node-fetch");
 
-const { TEST_DIR, ORIGINAL_DIR, TXT_FILE } = CONSTANTS;
+const {
+  TEST_DIR,
+  ORIGINAL_DIR,
+  TXT_FILE,
+  XML_FILE,
+  MMC_NL,
+  VIEWPORTS,
+  VIEWPORT_STRINGS,
+  DEVICES,
+} = CONSTANTS;
+
+const { large_desktop_screen, laptop_screen } = VIEWPORTS;
+const {
+  IPHONE_8,
+  IPHONE_8_PLUS,
+  IPHONE_X,
+  IPAD,
+  IPAD_MINI,
+  IPAD_PRO,
+  PIXEL_2,
+  PIXEL_2_XL,
+} = DEVICES;
 
 const logBrowserIsClosed = () => {
   console.log("Headless Chrome browser is closed");
@@ -25,7 +51,36 @@ const readFileLineByLine = async txtFile => {
   return _URLS;
 };
 
-async function takeScreenshot(page, route, filePrefix, dir, original) {
+const getUrlsFromTxtFile = async () => await readFileLineByLine(TXT_FILE);
+
+const getSitemapXml = async urlPrefix => {
+  const url = `${urlPrefix}/sitemap.xml`;
+  let xmlData;
+  try {
+    const response = await fetch(url);
+    xmlData = await response.text();
+  } catch (error) {
+    console.log(`Error fetching sitemap.xml: ${error}`);
+  }
+  return xmlData;
+};
+
+const readXmlFile = async xmlString => {
+  let xmlData;
+  await parser.parseString(xmlString, (error, result) => {
+    if (error === null) {
+      xmlData = result;
+    } else {
+      console.log(`XML parsing error from file: ${xmlFile}, Error: ${error}`);
+    }
+  });
+  return xmlData;
+};
+
+const getUrlsFromParsedSitemapXml = async JsFromXml =>
+  JsFromXml.urlset.url.map(({ loc }) => loc[0]);
+
+const takeScreenshot = async (page, route, filePrefix, dir, original) => {
   // console.log("ROUTE: ", route, "FILE PREFIX: ", filePrefix);
   let fileName = route.replace(/\//g, "-").substr(0);
 
@@ -48,7 +103,7 @@ async function takeScreenshot(page, route, filePrefix, dir, original) {
     `Initial screenshot to compare saved to: ${dir}/${filePrefix}/${fileName}.png`,
   );
   return;
-}
+};
 
 // Make our directories to save the screenshots into
 const makeDirectories = async (directoryName, viewPortDir, original) => {
@@ -118,21 +173,44 @@ const compareScreenshots = async (fileName, viewPortDir) => {
   });
 };
 
-const getUrls = async () => await readFileLineByLine(TXT_FILE);
-
 describe("take original screenshots", function() {
   it("Headless chrome is launching and taking origin screenshots", async function() {
     // Make directories if they don't exist
-    await makeDirectories(ORIGINAL_DIR, "wide", true);
-    const URLS = await getUrls();
+    await makeDirectories(ORIGINAL_DIR, VIEWPORT_STRINGS[0], true);
+
+    // Fetch the sitemap.xml
+    const FETCHED_XML_FILE = await getSitemapXml(MMC_NL);
+
+    // Read and parse the xml string as a JS object (Not JSON)
+    const JS_FROM_XML = await readXmlFile(FETCHED_XML_FILE);
+
+    // Get an array of URLS from the JS object from the parsed XML
+    const URLS_FROM_PARSED_XML = await getUrlsFromParsedSitemapXml(JS_FROM_XML);
+
+    // How many URLS should I expect screenshots for? Check the console.
+    console.log(
+      `Parsed ${URLS_FROM_PARSED_XML.length} urls from ${MMC_NL}/sitemap.xml`,
+    );
+
+    // Start headless Chrome session
     const browser = await puppeteer.launch();
 
     // Return an array of promises that are waiting for all screenshots to be taken and saved
     return Promise.all(
-      URLS.map(async (url, i) => {
-        const page = await browser.newPage();
-        await page.setViewport({ width: 1920, height: 1024 });
-        await takeScreenshot(page, url, "wide", ORIGINAL_DIR, true);
+      URLS_FROM_PARSED_XML.map(async (url, i) => {
+        try {
+          const page = await browser.newPage();
+          await page.setViewport(large_desktop_screen);
+          await takeScreenshot(
+            page,
+            url,
+            VIEWPORT_STRINGS[0],
+            ORIGINAL_DIR,
+            true,
+          );
+        } catch (error) {
+          console.log(`Error taking original screenshots: ${error}`);
+        }
       }),
     )
       .then(async () => {
@@ -142,28 +220,46 @@ describe("take original screenshots", function() {
       .catch(async err => {
         await browser.close();
         logBrowserIsClosed();
-        console.log(`Error: ${err}`);
+        console.log(`Error taking original screenshots: ${err}`);
       });
   }).timeout(0);
 });
 
 describe("take and compare screenshots", function() {
   it("should launch headless Chrome, take and compare screenshots, and report no pixel differences", async function() {
-    // Make directories if they don't exist
-    await makeDirectories(TEST_DIR, "wide");
-    const URLS = await getUrls();
+    await makeDirectories(TEST_DIR, VIEWPORT_STRINGS[0]);
+    const FETCHED_XML_FILE = await getSitemapXml(MMC_NL);
+    const JS_FROM_XML = await readXmlFile(FETCHED_XML_FILE);
+    const URLS_FROM_PARSED_XML = await getUrlsFromParsedSitemapXml(JS_FROM_XML);
+    console.log(
+      `Parsed ${URLS_FROM_PARSED_XML.length} urls from ${MMC_NL}/sitemap.xml`,
+    );
 
-    // Launch headless chrome
     const browser = await puppeteer.launch();
 
     // Return an array of promises that are waiting for all screenshots to be taken and saved
 
     return Promise.all(
-      URLS.map(async (url, i) => {
-        const page = await browser.newPage();
-        await page.setViewport({ width: 1920, height: 1024 });
-        const fileName = await takeScreenshot(page, url, "wide", TEST_DIR);
-        await compareScreenshots(fileName, "wide");
+      URLS_FROM_PARSED_XML.map(async (url, i) => {
+        let fileName;
+        try {
+          const page = await browser.newPage();
+          await page.setViewport(large_desktop_screen);
+          fileName = await takeScreenshot(
+            page,
+            url,
+            VIEWPORT_STRINGS[0],
+            TEST_DIR,
+          );
+        } catch (error) {
+          console.log(`Error taking comparison screenshots: ${error}`);
+        }
+
+        try {
+          await compareScreenshots(fileName, VIEWPORT_STRINGS[0]);
+        } catch (error) {
+          console.log(`Error creating a diff PNG: ${error}`);
+        }
       }),
     )
       .then(doneComparingScreenshots)
