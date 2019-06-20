@@ -14,9 +14,21 @@ We then run a script that takes an additional screenshot at a later time (per vi
 1. If you don't need either your original or current screenshots run either `npm run delete_originals` or `npm run delete_current` or to clear them all you can run `npm run clear_screenshots`
 2. Most likely you will be clearing hte CURRENT screenshots more often to compare against the originals with a new set of screenshots
 3. To take a set of original screenshots to compare against at a later date and time, run `npm run original`
-4. To take a comparison set of screenshots run `npm run compare`
+4. At a later time like after a deploy: To take a comparison set of screenshots run `npm run compare`
 5. We try to log out to the console when each set of screenshots is complete, but this is buggy at the moment
+6. the console should show a confirmation after each screenshot is saved like this:
 
-### TODOS
+```
+take original screenshots
+Parsed 154 urls from https://www.mitsubishi-motors.nl/sitemap.xml
+Initial screenshot to compare saved to: screenshots-originals/large_desktop_screen/https:--www.mitsubishi-motors.nl-modellen-eclipse-cross-exterieur.png
+Initial screenshot to compare saved to: screenshots-originals/large_desktop_screen/https:--www.mitsubishi-motors.nl-modellen-l200-interieur.png
+```
+
+7. The script can take a whie to run and possibly up to 2 or 3 minutes to save the first few screenshots
+
+### TODOS or BUGS whichever sounds more positive
 1. make clearer scripts and logic to use either a txt or xml file
 2. work out the bugs with logging out when the tests are complete
+3. Script does not always log out when its done, but you can count the saved screenshot log messages to get an idea if it is based on the number or URLs
+
